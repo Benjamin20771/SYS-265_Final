@@ -110,8 +110,12 @@ function Get-YesNo {
 
 function Test-ValidIP {
     param([string]$IP)
-    return ($IP -match '^(\d{1,3}\.){3}\d{1,3}$') -and
-           ($IP.Split('.') | ForEach-Object { [int]$_ -le 255 } | Where-Object { $_ -eq $false }).Count -eq 0
+    if ($IP -notmatch '^(\d{1,3}\.){3}\d{1,3}$') { return $false }
+    $octets = $IP.Split('.')
+    foreach ($octet in $octets) {
+        if ([int]$octet -gt 255) { return $false }
+    }
+    return $true
 }
 
 function Test-ValidHostname {
@@ -190,7 +194,7 @@ function Set-NetworkConfig {
         [string]$AdapterName,
         [bool]$UseDHCP,
         [string]$IPAddress,
-        [int]$PrefixLength,
+        [nullable[int]]$PrefixLength,
         [string]$Gateway,
         [string]$DNSPrimary,
         [string]$DNSSecondary,
@@ -397,6 +401,40 @@ function Enable-RDPAccess {
 }
 
 # =============================================
+# RSAT Installation (Server GUI only)
+# =============================================
+
+function Install-RSATTools {
+    Write-Info "Installing Remote Server Administration Tools (RSAT)..."
+
+    $features = @(
+        "RSAT-AD-Tools",           # AD Users and Computers, AD Domains and Trusts
+        "RSAT-AD-PowerShell",      # Active Directory PowerShell module
+        "RSAT-DNS-Server",         # DNS Manager
+        "RSAT-DHCP",               # DHCP Manager
+        "RSAT-File-Services",      # DFS Management (needed for M3 DFS profiles)
+        "RSAT-Role-Tools",         # General role management tools
+        "GPMC"                     # Group Policy Management Console (needed for M3 GPO)
+    )
+
+    foreach ($feature in $features) {
+        $f = Get-WindowsFeature -Name $feature -ErrorAction SilentlyContinue
+        if ($f -and -not $f.Installed) {
+            Write-Info "Installing: $feature"
+            Install-WindowsFeature -Name $feature -IncludeManagementTools -ErrorAction SilentlyContinue | Out-Null
+            Write-Success "Installed: $feature"
+        } elseif ($f -and $f.Installed) {
+            Write-Warn "$feature is already installed. Skipping."
+        } else {
+            Write-Warn "Feature not found on this system: $feature"
+        }
+    }
+
+    Write-Success "RSAT tools installation complete."
+    Write-Info "You can now manage AD, DNS, DHCP, DFS, and Group Policy from this machine."
+}
+
+# =============================================
 # Connectivity Test
 # =============================================
 
@@ -476,10 +514,11 @@ function Show-Summary {
         Write-Host "  - $($u.Username)$adminTag"
     }
     Write-Host ""
-    Write-Host "Domain Join:     $(if ($Config.DoDomainJoin) { 'Yes - ' + $Config.DomainName } else { 'No' })"
+    Write-Host "Domain Join:     $(if ($Config.DoDomainJoin) { 'Yes - ' + $Config.DomainJoinTarget } else { 'No' })"
     Write-Host "Firewall:        $(if ($Config.DoFirewall) { 'Configure' } else { 'Skip' })"
     Write-Host "WinRM:           $(if ($Config.DoWinRM) { 'Enable' } else { 'Skip' })"
     Write-Host "RDP:             $(if ($Config.DoRDP) { 'Enable' } else { 'Skip' })"
+    Write-Host "RSAT Tools:      $(if ($Config.DoRSAT -eq $true) { 'Install' } else { 'Skip' })"
     Write-Host "======================================" -ForegroundColor White
     Write-Host ""
 }
@@ -534,7 +573,7 @@ function Main {
     if ($useDHCP) {
         Write-Info "Network will be configured for DHCP."
         $config.IPAddress    = "DHCP"
-        $config.PrefixLength = 0
+        $config.PrefixLength = $null
         $config.Gateway      = "DHCP"
     } else {
         Write-Host ""
@@ -631,9 +670,9 @@ function Main {
     $config.DoDomainJoin = $doDomainJoin
 
     if ($doDomainJoin) {
-        $config.DomainName   = Get-Input "Domain to join" $config.Domain
-        $config.DomainUser   = Get-Input "Domain admin username (e.g. Administrator)"
-        $config.DomainPass   = Get-SecureInput "Password for $($config.DomainUser)"
+        $config.DomainJoinTarget = Get-Input "Domain to join" $config.Domain
+        $config.DomainUser       = Get-Input "Domain admin username (e.g. Administrator)"
+        $config.DomainPass       = Get-SecureInput "Password for $($config.DomainUser)"
 
         $useOU = Get-YesNo "Specify a custom OU path?" "n"
         if ($useOU) {
@@ -653,6 +692,15 @@ function Main {
     $config.DoWinRM    = Get-YesNo "Enable WinRM for remote management (required for Ansible)?" "y"
     Write-Host ""
     $config.DoRDP      = Get-YesNo "Enable Remote Desktop (RDP)?" "y"
+
+    # RSAT -- only offered on Server GUI machines (e.g. MGMT1)
+    $config.DoRSAT = $false
+    if ($osInfo.Type -eq "ServerGUI") {
+        Write-Host ""
+        Write-Info "This is a Server GUI machine (e.g. MGMT1)."
+        Write-Info "RSAT gives you AD Users and Computers, DNS Manager, DHCP Manager, DFS, and Group Policy Management Console."
+        $config.DoRSAT = Get-YesNo "Install RSAT management tools?" "y"
+    }
 
     # ---- Summary & Confirm ----
     Write-Host ""
@@ -708,7 +756,7 @@ function Main {
     if ($config.DoDomainJoin) {
         try {
             $joined = Join-ADDomain `
-                -DomainName $config.DomainName `
+                -DomainName $config.DomainJoinTarget `
                 -DomainUser $config.DomainUser `
                 -DomainPassword $config.DomainPass `
                 -OUPath $config.OUPath
@@ -742,6 +790,15 @@ function Main {
             Enable-RDPAccess
         } catch {
             Write-Err "RDP enable failed: $_"
+        }
+    }
+
+    # RSAT (Server GUI only)
+    if ($config.DoRSAT) {
+        try {
+            Install-RSATTools
+        } catch {
+            Write-Err "RSAT installation failed: $_"
         }
     }
 
