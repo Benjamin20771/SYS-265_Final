@@ -121,6 +121,9 @@ function Get-MachineState {
         $state.ADInstalled = $true
     }
 
+    # Attempt to import AD module before using AD cmdlets
+    Import-Module ActiveDirectory -ErrorAction SilentlyContinue
+
     # Check if machine is a DC
     try {
         $domain = Get-ADDomain -ErrorAction Stop
@@ -280,7 +283,7 @@ function New-DomainUserAccount {
     )
 
     # Check if user already exists
-    $existing = Get-ADUser -Filter { SamAccountName -eq $Username } -ErrorAction SilentlyContinue
+    $existing = Get-ADUser -Filter "SamAccountName -eq '$Username'" -ErrorAction SilentlyContinue
     if ($existing) {
         Write-Warn "User '$Username' already exists in AD. Skipping creation."
         return
@@ -311,7 +314,7 @@ function New-DomainUserAccount {
 function New-LinuxAdminsGroup {
     Write-Info "Creating 'linux-admins' AD security group..."
 
-    $existing = Get-ADGroup -Filter { Name -eq "linux-admins" } -ErrorAction SilentlyContinue
+    $existing = Get-ADGroup -Filter "Name -eq 'linux-admins'" -ErrorAction SilentlyContinue
     if ($existing) {
         Write-Warn "'linux-admins' group already exists. Skipping."
         return
@@ -445,8 +448,9 @@ function Test-ADReplication {
         try {
             $dcs = Get-ADDomainController -Filter * | Select-Object -ExpandProperty HostName
             foreach ($dc in $dcs) {
-                repadmin /syncall $dc /AdeP 2>&1 | Out-Null
+                $output = & repadmin /syncall $dc /AdeP 2>&1
                 Write-Success "Sync initiated with: $dc"
+                Write-Info ($output | Out-String).Trim()
             }
         } catch {
             Write-Warn "repadmin sync failed: $_"
@@ -524,7 +528,11 @@ function Main {
         $doRepl = Get-YesNo "Do you want to check AD replication status?" "y"
         if ($doRepl) {
             Test-ADReplication
-            $config.Action += " + Replication Check"
+            if ($config.Action -ne "") {
+                $config.Action += " + Replication Check"
+            } else {
+                $config.Action = "Replication Check"
+            }
         }
 
         Show-Summary $config
@@ -547,9 +555,9 @@ function Main {
 
     $domainExists = $false
     try {
-        $testDomain = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain(
+        [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain(
             (New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext("Domain", $domainName))
-        )
+        ) | Out-Null
         $domainExists = $true
         Write-Success "Existing domain found. This machine will be promoted as DC2 (additional DC)."
     } catch {
