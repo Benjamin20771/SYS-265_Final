@@ -171,7 +171,7 @@ function Install-ADDSRole {
 }
 
 # =============================================
-# DC1 — Promote as New Forest (Primary DC)
+# DC1 - Promote as New Forest (Primary DC)
 # =============================================
 
 function Invoke-DC1Promotion {
@@ -210,7 +210,7 @@ function Invoke-DC1Promotion {
 }
 
 # =============================================
-# DC2 — Auto-detect DC1 and Join as Replica
+# DC2 - Auto-detect DC1 and Join as Replica
 # =============================================
 
 function Find-PrimaryDC {
@@ -513,7 +513,7 @@ function Main {
         Action     = ""
     }
 
-    # ---- Already a DC — offer user creation and replication check ----
+    # ---- Already a DC - offer user creation and replication check ----
     if ($state.IsDC) {
         Write-Success "This machine is already a Domain Controller ($($state.Role))."
         Write-Host ""
@@ -587,7 +587,7 @@ function Main {
 
     if (-not $domainExists) {
         # ---- DC1 Path ----
-        Write-Host "=== DC1 Promotion — New Forest ===" -ForegroundColor White
+        Write-Host "=== DC1 Promotion - New Forest ===" -ForegroundColor White
         Write-Host ""
 
         # NetBIOS name (auto-derive from domain)
@@ -613,7 +613,7 @@ function Main {
 
     } else {
         # ---- DC2 Path ----
-        Write-Host "=== DC2 Promotion — Additional Domain Controller ===" -ForegroundColor White
+        Write-Host "=== DC2 Promotion - Additional Domain Controller ===" -ForegroundColor White
         Write-Host ""
 
         Write-Info "You need a domain admin credential to join as an additional DC."
