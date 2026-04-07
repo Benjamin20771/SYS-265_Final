@@ -13,7 +13,8 @@ We're building a complete medium-sized enterprise from scratch — Active Direct
 
 ## The Environment
 
-<img width="1627" height="585" alt="networkdiagram" src="https://github.com/user-attachments/assets/3a57a000-25c9-4d97-b53a-77435e562e25" />
+<img width="1627" height="585" alt="XLJTRjem5Bv7uXsEsCqcbIpEA4ZLL3KbIpUDigcXueORBpOGaTZ8TePOLsaFqIViayns-4dmkfv8aSyvttVEv_WuLr9XeSeYRxVaAcDhB701XCvncQkOCpN61OLGPFWbG9Bzee22UlO7JbSBmKj6XZpd0jx4eNdga508ljbb-zQSx6IPfIj6fGJKRjMpZ1CA3-qMmBNJo9fDSK" src="https://github.com/user-attachments/assets/274f49f5-7e36-41b2-ab3f-c9e4b5ab7058" />
+
 
 ```
 172.16.1.0/24 LAN (behind pfSense FW1)
