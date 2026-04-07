@@ -2,7 +2,7 @@
 
 **Benjamin · Thomas · Jacob** | Champlain College SYS-265
 
-[![Milestone 1](https://img.shields.io/badge/Milestone%201-In%20Progress-yellow)](../../milestone/1)
+[![Milestone 1](https://img.shields.io/badge/Milestone%201-Completed-green)](../../milestone/1)
 [![Milestone 2](https://img.shields.io/badge/Milestone%202-Pending-lightgrey)](../../milestone/2)
 [![Milestone 3](https://img.shields.io/badge/Milestone%203-Pending-lightgrey)](../../milestone/3)
 [![Wiki](https://img.shields.io/badge/Docs-Wiki-blue)](../../wiki)
