@@ -11,36 +11,6 @@
 
 We're building a complete medium-sized enterprise from scratch — Active Directory, redundant DHCP, Ansible automation, Docker, DFS profiles, and Group Policy — across three graded milestones.
 
-## The Environment
-
-<img width="1627" height="585" alt="XLJTRjem5Bv7uXsEsCqcbIpEA4ZLL3KbIpUDigcXueORBpOGaTZ8TePOLsaFqIViayns-4dmkfv8aSyvttVEv_WuLr9XeSeYRxVaAcDhB701XCvncQkOCpN61OLGPFWbG9Bzee22UlO7JbSBmKj6XZpd0jx4eNdga508ljbb-zQSx6IPfIj6fGJKRjMpZ1CA3-qMmBNJo9fDSK" src="https://github.com/user-attachments/assets/274f49f5-7e36-41b2-ab3f-c9e4b5ab7058" />
-
-
-```
-172.16.1.0/24 LAN (behind pfSense FW1)
-
-  .2   FW1        pfSense gateway
-  .5   Docker     Ubuntu — containerized CMS
-  .10  DHCP1      Rocky Linux — redundant DHCP
-  .11  DHCP2      Rocky Linux — redundant DHCP
-  .12  DC1        Server 2019 Core — ADDS/DNS
-  .13  DC2        Server 2019 Core — ADDS/DNS
-  .14  MGMT1      Server 2019 GUI — AD management
-  .15  Util       Rocky Linux — domain joined
-  (static) MGMT2  Ubuntu — Ansible controller
-  .100–.150  WS1, WS2  Windows 10 — domain workstations
-  DFS1, DFS2  Server 2019 Core — distributed file system
-```
-
-## What's In This Repo
-
-| Path | Contents |
-|------|----------|
-| `Scripts/windows/` | PowerShell scripts for Windows config |
-| `Scripts/linux/` | Bash scripts for Linux config |
-| `Scripts/ansible/` | Playbooks and inventory |
-| `configs/` | Config files touched during build |
-| [Wiki](../../wiki) | Full build docs, RVTM, test procedures |
 
 ## Milestone Checklist
 
