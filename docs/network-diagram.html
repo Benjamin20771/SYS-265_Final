@@ -1,1 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>goose.local — Network Diagram</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#7d8590}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;gap:8px}
+  .header-title{font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem}
+  .header-title span{color:var(--muted)}
+  .controls{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .controls-label{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-right:2px}
+  .toggle-btn{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.65rem;cursor:pointer;transition:all .15s;user-select:none}
+  .toggle-btn .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .toggle-btn.active{border-color:currentColor;color:var(--text);background:rgba(255,255,255,.05)}
+  .toggle-btn:hover{background:rgba(255,255,255,.07)}
+  .canvas-wrap{flex:1;overflow:hidden;position:relative}
+  svg{width:100%;height:100%;display:block;cursor:grab}
+  svg.dragging{cursor:grabbing}
+  .node-rect{filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))}
+  .node-group:hover .node-rect{filter:drop-shadow(0 6px 20px rgba(0,0,0,.7)) brightness(1.15)}
+  .node-label{font-family:'JetBrains Mono',monospace;fill:#fff;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
+  .node-name{font-size:11px;font-weight:700}
+  .node-sub{font-size:9px;opacity:.75}
+  .edge{fill:none;stroke-linecap:square;stroke-linejoin:miter}
+  .edge.hidden,.elabel.hidden{opacity:0!important;pointer-events:none}
+  .edge-network{stroke:#888;stroke-width:1.8}
+  .edge-ad{stroke:#9b59b6;stroke-width:1.5;stroke-dasharray:6 3}
+  .edge-mgmt{stroke:#27ae60;stroke-width:1.5;stroke-dasharray:6 3}
+  .edge-ansible{stroke:#e67e22;stroke-width:1.5;stroke-dasharray:5 3}
+  .edge-dhcp{stroke:#e91e8c;stroke-width:1.5;stroke-dasharray:5 3}
+  .edge-rdp{stroke:#79c0ff;stroke-width:1.5;stroke-dasharray:4 4}
+  .edge-dfs{stroke:#2e86c1;stroke-width:1.5;stroke-dasharray:6 3}
+  .edge-profiles{stroke:#58a6ff;stroke-width:1.5;stroke-dasharray:4 6}
+  .elabel{font-family:'JetBrains Mono',monospace;font-size:8px;fill:var(--muted);text-anchor:middle;pointer-events:none}
+  .zoom-controls{position:absolute;bottom:14px;right:14px;display:flex;flex-direction:column;gap:4px}
+  .zoom-btn{width:30px;height:30px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center}
+  .zoom-btn:hover{background:var(--border)}
+  .legend{position:absolute;bottom:14px;left:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.63rem;line-height:1.9}
+  .legend-title{font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:2px}
+  .legend-row{display:flex;align-items:center;gap:6px;color:var(--muted)}
+  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .legend-note{font-size:.58rem;color:var(--muted);margin-top:6px;border-top:1px solid var(--border);padding-top:6px;max-width:150px;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-title">🦆 goose.local <span>— Network Diagram</span></div>
+  <div class="controls">
+    <span class="controls-label">Layers:</span>
+    <button class="toggle-btn active" data-layer="network"  style="color:#888"><div class="dot" style="background:#888"></div>Network</button>
+    <button class="toggle-btn active" data-layer="ad"       style="color:#9b59b6"><div class="dot" style="background:#9b59b6"></div>AD Auth</button>
+    <button class="toggle-btn active" data-layer="mgmt"     style="color:#27ae60"><div class="dot" style="background:#27ae60"></div>MGMT Admin</button>
+    <button class="toggle-btn active" data-layer="ansible"  style="color:#e67e22"><div class="dot" style="background:#e67e22"></div>Ansible</button>
+    <button class="toggle-btn active" data-layer="dhcp"     style="color:#e91e8c"><div class="dot" style="background:#e91e8c"></div>DHCP</button>
+    <button class="toggle-btn active" data-layer="rdp"      style="color:#79c0ff"><div class="dot" style="background:#79c0ff"></div>RDP</button>
+    <button class="toggle-btn active" data-layer="dfs"      style="color:#2e86c1"><div class="dot" style="background:#2e86c1"></div>DFS Repl</button>
+    <button class="toggle-btn active" data-layer="profiles" style="color:#58a6ff"><div class="dot" style="background:#58a6ff"></div>DFS Profiles</button>
+  </div>
+</header>
+<div class="canvas-wrap">
 
+<!--
+  ═══════════════════════════════════════════════════════════════
+  COORDINATE SYSTEM  viewBox="0 0 2600 1200"
+
+  NODE TABLE  (cx, cy, half-width=130, half-height=40)
+  ┌──────────┬──────┬──────┬──────────────────────────────────┐
+  │ Name     │  cx  │  cy  │  bbox: L  R  T  B               │
+  ├──────────┼──────┼──────┼──────────────────────────────────┤
+  │ WAN      │ 1300 │  100 │  1200 1400  72 128  (w200,h56)  │
+  │ FW1      │ 1300 │  260 │  1150 1450 220 300  (w300,h80)  │
+  │ DC1      │  800 │  460 │   670  930 420 500  (w260,h80)  │
+  │ DC2      │ 1800 │  460 │  1670 1930 420 500  (w260,h80)  │
+  │ MGMT01   │  200 │  700 │    70  330 660 740  (w260,h80)  │
+  │ DHCP01   │  570 │  700 │   440  700 660 740  (w260,h80)  │
+  │ MGMT02   │  940 │  700 │   810 1070 660 740  (w260,h80)  │
+  │ DOCKER   │ 1300 │  700 │  1170 1430 660 740  (w260,h80)  │
+  │ UTIL     │ 1660 │  700 │  1530 1790 660 740  (w260,h80)  │
+  │ DFS01    │ 2020 │  700 │  1890 2150 660 740  (w260,h80)  │
+  │ DFS02    │ 2400 │  700 │  2270 2530 660 740  (w260,h80)  │
+  │ W01      │  800 │  960 │   670  930 920 1000 (w260,h80)  │
+  │ W02      │ 1300 │  960 │  1170 1430 920 1000 (w260,h80)  │
+  └──────────┴──────┴──────┴──────────────────────────────────┘
+
+  SAFE HORIZONTAL RAILS  (no node occupies these y values):
+    y=170  between WAN(bot=128) and FW1(top=220)
+    y=370  between FW1(bot=300) and DC1/DC2(top=420)
+    y=560  between DC1/DC2(bot=500) and Row4(top=660)
+    y=820  between Row4(bot=740) and W01/W02(top=920)
+    y=1080 below W01/W02(bot=1000)
+
+  SAFE VERTICAL GUTTERS  (no node in these x ranges at any y):
+    x=30   far-left gutter
+    x=2570 far-right gutter
+
+  For parallel lines on same rail, offset y by 10px each.
+  For parallel lines in same gutter, offset x by 12px each.
+  ═══════════════════════════════════════════════════════════════
+-->
+
+<svg id="svg" viewBox="0 0 2600 1200">
+<defs>
+  <marker id="m-n"   markerWidth="7" markerHeight="7" refX="6"   refY="3.5" orient="auto"                ><polygon points="0 0,7 3.5,0 7" fill="#888888"/></marker>
+  <marker id="m-nb"  markerWidth="7" markerHeight="7" refX="0.5" refY="3.5" orient="auto-start-reverse"  ><polygon points="0 0,7 3.5,0 7" fill="#888888"/></marker>
+  <marker id="m-ad"  markerWidth="7" markerHeight="7" refX="6"   refY="3.5" orient="auto"                ><polygon points="0 0,7 3.5,0 7" fill="#9b59b6"/></marker>
+  <marker id="m-adb" markerWidth="7" markerHeight="7" refX="0.5" refY="3.5" orient="auto-start-reverse"  ><polygon points="0 0,7 3.5,0 7" fill="#9b59b6"/></marker>
+  <marker id="m-mg"  markerWidth="7" markerHeight="7" refX="6"   refY="3.5" orient="auto"                ><polygon points="0 0,7 3.5,0 7" fill="#27ae60"/></marker>
+  <marker id="m-mgb" markerWidth="7" markerHeight="7" refX="0.5" refY="3.5" orient="auto-start-reverse"  ><polygon points="0 0,7 3.5,0 7" fill="#27ae60"/></marker>
+  <marker id="m-an"  markerWidth="7" markerHeight="7" refX="6"   refY="3.5" orient="auto"                ><polygon points="0 0,7 3.5,0 7" fill="#e67e22"/></marker>
+  <marker id="m-dh"  markerWidth="7" markerHeight="7" refX="6"   refY="3.5" orient="auto"                ><polygon points="0 0,7 3.5,0 7" fill="#e91e8c"/></marker>
+  <marker id="m-rda" markerWidth="7" markerHeight="7" refX="6"   refY="3.5" orient="auto"                ><polygon points="0 0,7 3.5,0 7" fill="#79c0ff"/></marker>
+  <marker id="m-rdb" markerWidth="7" markerHeight="7" refX="0.5" refY="3.5" orient="auto-start-reverse"  ><polygon points="0 0,7 3.5,0 7" fill="#79c0ff"/></marker>
+  <marker id="m-df"  markerWidth="7" markerHeight="7" refX="6"   refY="3.5" orient="auto"                ><polygon points="0 0,7 3.5,0 7" fill="#2e86c1"/></marker>
+  <marker id="m-dfb" markerWidth="7" markerHeight="7" refX="0.5" refY="3.5" orient="auto-start-reverse"  ><polygon points="0 0,7 3.5,0 7" fill="#2e86c1"/></marker>
+  <marker id="m-pr"  markerWidth="7" markerHeight="7" refX="6"   refY="3.5" orient="auto"                ><polygon points="0 0,7 3.5,0 7" fill="#58a6ff"/></marker>
+</defs>
+
+<g id="edges">
+
+<!-- ══════════════════════════════════════════════════════════
+     NETWORK (grey)  — each connection is its own path
+     All lines routed through safe rails/gutters ONLY
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- WAN ↔ FW1  — straight vertical, no turns needed -->
+<polyline class="edge edge-network" data-layer="network"
+  marker-start="url(#m-nb)" marker-end="url(#m-n)"
+  points="1300,128  1300,220"/>
+
+<!-- FW1 ↔ DC1 -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1230,300  1230,370  800,370  800,420"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="804,420  804,374  1234,374  1234,300"/>
+
+<!-- FW1 ↔ DC2 -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1370,300  1370,370  1800,370  1800,420"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1804,420  1804,374  1374,374  1374,300"/>
+
+<!-- FW1 ↔ MGMT01 -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1150,250  30,250  30,700  70,700"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="70,704  34,704  34,254  1150,254"/>
+
+<!-- FW1 ↔ DHCP01 -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1150,260  42,260  42,756  440,756  440,740"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="444,740  444,760  46,760  46,264  1150,264"/>
+
+<!-- FW1 ↔ MGMT02 -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1180,300  1180,380  940,380  940,660"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="944,660  944,384  1184,384  1184,300"/>
+
+<!-- FW1 ↔ DOCKER -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1300,300  1300,660"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1304,660  1304,300"/>
+
+<!-- FW1 ↔ UTIL -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1420,300  1420,395  1660,395  1660,660"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1664,660  1664,399  1424,399  1424,300"/>
+
+<!-- FW1 ↔ DFS01 -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1450,250  2560,250  2560,650  2020,650  2020,660"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="2024,660  2024,654  2564,654  2564,254  1450,254"/>
+
+<!-- FW1 ↔ DFS02 -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1450,262  2582,262  2582,718  2530,718"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="2530,722  2586,722  2586,266  1450,266"/>
+
+<!-- FW1 ↔ W01 -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1150,240  18,240  18,960  670,960"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="670,964  22,964  22,244  1150,244"/>
+
+<!-- FW1 ↔ W02 -->
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1150,270  54,270  54,1010  1170,1010  1170,1000"/>
+<polyline class="edge edge-network" data-layer="network" marker-end="url(#m-n)" points="1174,1000  1174,1014  58,1014  58,274  1150,274"/>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     AD AUTH  (purple dashed)
+     DC1 → each domain member
+     Routing rail: y=560 (between row3 and row4)
+     Each line gets a unique y offset (+0, +10, +20 …) to stay separate
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- DC1 ↔ DC2  AD Replication — horizontal at y=460 (node mid-height) -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-start="url(#m-adb)" marker-end="url(#m-ad)"
+  points="930,460  1670,460"/>
+<text class="elabel" data-layer="ad" x="1300" y="452">AD repl</text>
+
+<!-- DC1 → MGMT01  — exit left at y=455, route to x=560, rail y=560, left to x=200, drop -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-end="url(#m-ad)"
+  points="670,455  560,455  560,560  200,560  200,660"/>
+
+<!-- DC1 → DHCP01  — exit left at y=465, route x=570, rail y=568, to x=570 (same), drop -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-end="url(#m-ad)"
+  points="670,465  600,465  600,568  570,568  570,660"/>
+
+<!-- DC1 → MGMT02  — exit bottom at x=810, drop to y=576, right to x=940, drop -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-end="url(#m-ad)"
+  points="810,500  810,576  940,576  940,660"/>
+
+<!-- DC1 → DOCKER  — exit bottom at x=820, rail y=582, right to x=1300, drop -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-end="url(#m-ad)"
+  points="820,500  820,582  1300,582  1300,660"/>
+
+<!-- DC1 → UTIL  — exit bottom at x=830, rail y=588, right to x=1660, drop -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-end="url(#m-ad)"
+  points="830,500  830,588  1660,588  1660,660"/>
+
+<!-- DC1 → DFS01  — exit right at y=455, go to x=960, rail y=594, right to x=2020, drop -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-end="url(#m-ad)"
+  points="930,455  960,455  960,594  2020,594  2020,660"/>
+
+<!-- DC1 → DFS02  — exit right at y=465, go to x=970, rail y=600, right to x=2400, drop -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-end="url(#m-ad)"
+  points="930,465  970,465  970,600  2400,600  2400,660"/>
+
+<!-- DC1 → W01  — exit bottom at x=790, drop straight to W01 top (both at x≈800) -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-end="url(#m-ad)"
+  points="790,500  790,840  800,840  800,920"/>
+
+<!-- DC1 → W02  — exit bottom at x=840, stay right of MGMT02 (R=1070): go to x=1080, rail y=832, right to x=1300, drop -->
+<polyline class="edge edge-ad" data-layer="ad"
+  marker-end="url(#m-ad)"
+  points="840,500  840,620  1080,620  1080,832  1300,832  1300,920"/>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     MGMT ADMIN  (green dashed)
+     MGMT01 → DC1, DC2, DFS01, DFS02
+     Routing: exit top of MGMT01 then go up through rail y=620
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- MGMT01 → DC1  — exit top, up to y=622, right to x=780, up to DC1 bottom -->
+<polyline class="edge edge-mgmt" data-layer="mgmt"
+  marker-start="url(#m-mgb)" marker-end="url(#m-mg)"
+  points="200,660  200,622  780,622  780,500"/>
+
+<!-- MGMT01 → DC2  — exit right, route below row4 at y=746, use x=1795 (right of UTIL R=1790), up to DC2 bottom -->
+<polyline class="edge edge-mgmt" data-layer="mgmt"
+  marker-start="url(#m-mgb)" marker-end="url(#m-mg)"
+  points="330,690  400,690  400,746  1795,746  1795,500"/>
+
+<!-- MGMT01 → DFS01  — y=754, right to x=1900, up into DFS01 bottom -->
+<polyline class="edge edge-mgmt" data-layer="mgmt"
+  marker-start="url(#m-mgb)" marker-end="url(#m-mg)"
+  points="330,700  410,700  410,754  1900,754  1900,740"/>
+
+<!-- MGMT01 → DFS02  — y=762, right to x=2380, up into DFS02 bottom -->
+<polyline class="edge edge-mgmt" data-layer="mgmt"
+  marker-start="url(#m-mgb)" marker-end="url(#m-mg)"
+  points="330,710  420,710  420,762  2380,762  2380,740"/>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     ANSIBLE SSH  (orange dashed)
+     MGMT02 → targets
+     Horizontal connections stay on y=700 (row center) with small offsets
+     Vertical connections use rail y=550 (above row4)
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- MGMT02 → MGMT01  — exit top, go up to y=648 (above row4 top=660), left to x=200, drop to MGMT01 top -->
+<polyline class="edge edge-ansible" data-layer="ansible"
+  marker-end="url(#m-an)"
+  points="810,660  810,648  200,648  200,660"/>
+
+<!-- MGMT02 → DHCP01  — straight left at y=712 -->
+<polyline class="edge edge-ansible" data-layer="ansible"
+  marker-end="url(#m-an)"
+  points="810,712  700,712"/>
+
+<!-- MGMT02 → DOCKER  — straight right at y=700 -->
+<polyline class="edge edge-ansible" data-layer="ansible"
+  marker-end="url(#m-an)"
+  points="1070,700  1170,700"/>
+
+<!-- MGMT02 → UTIL  — exit top, go to y=644 (above row4 top=660), right to x=1660, drop to UTIL top -->
+<polyline class="edge edge-ansible" data-layer="ansible"
+  marker-end="url(#m-an)"
+  points="1070,660  1070,644  1660,644  1660,660"/>
+
+<!-- MGMT02 → DC1  — exit top at x=920, rail y=548, left to x=780, up to DC1 bottom -->
+<polyline class="edge edge-ansible" data-layer="ansible"
+  marker-end="url(#m-an)"
+  points="920,660  920,548  780,548  780,500"/>
+
+<!-- MGMT02 → DC2  — exit top at x=960, rail y=540, right to x=1820, up to DC2 bottom -->
+<polyline class="edge edge-ansible" data-layer="ansible"
+  marker-end="url(#m-an)"
+  points="960,660  960,540  1820,540  1820,500"/>
+
+<!-- MGMT02 → DFS01  — exit top at x=970, rail y=532, right to x=1920, down to DFS01 top -->
+<polyline class="edge edge-ansible" data-layer="ansible"
+  marker-end="url(#m-an)"
+  points="970,660  970,532  1920,532  1920,660"/>
+
+<!-- MGMT02 → DFS02  — exit top at x=980, rail y=524, right to x=2380, down to DFS02 top -->
+<polyline class="edge edge-ansible" data-layer="ansible"
+  marker-end="url(#m-an)"
+  points="980,660  980,524  2380,524  2380,660"/>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     DHCP LEASES  (pink dashed)
+     DHCP01 → W01, W02
+     Rail y=820 (between row4 bot=740 and row5 top=920)
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- DHCP01 → W01  — exit bottom at x=560, down to rail y=820, right to x=800, drop to W01 top -->
+<polyline class="edge edge-dhcp" data-layer="dhcp"
+  marker-end="url(#m-dh)"
+  points="560,740  560,820  800,820  800,920"/>
+
+<!-- DHCP01 → W02  — exit bottom at x=580, down to rail y=830, right to x=1300, drop -->
+<polyline class="edge edge-dhcp" data-layer="dhcp"
+  marker-end="url(#m-dh)"
+  points="580,740  580,830  1300,830  1300,920"/>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     RDP  (light-blue dashed, bidirectional)
+     W01 ↔ W02  — horizontal at row center y=960
+     ══════════════════════════════════════════════════════════ -->
+<polyline class="edge edge-rdp" data-layer="rdp"
+  marker-start="url(#m-rdb)" marker-end="url(#m-rda)"
+  points="930,960  1170,960"/>
+<text class="elabel" data-layer="rdp" x="1050" y="951">RDP</text>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     DFS REPLICATION  (dark-blue dashed, bidirectional)
+     DFS01 ↔ DFS02  — horizontal at row center y=700
+     ══════════════════════════════════════════════════════════ -->
+<polyline class="edge edge-dfs" data-layer="dfs"
+  marker-start="url(#m-dfb)" marker-end="url(#m-df)"
+  points="2150,700  2270,700"/>
+<text class="elabel" data-layer="dfs" x="2210" y="691">repl</text>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     DFS PROFILES  (sky-blue dashed)
+     W01 → DFS01,  W02 → DFS01
+     Deep rail y=1080 (below all nodes, row5 bot=1000)
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- W01 → DFS01  — exit bottom at x=810, deep rail y=1080, right to x=2010, rise to DFS01 bottom -->
+<polyline class="edge edge-profiles" data-layer="profiles"
+  marker-end="url(#m-pr)"
+  points="810,1000  810,1080  2010,1080  2010,740"/>
+<text class="elabel" data-layer="profiles" x="1410" y="1072">roaming profiles</text>
+
+<!-- W02 → DFS01  — exit bottom at x=1290, deep rail y=1092, right to x=2030, rise to DFS01 bottom -->
+<polyline class="edge edge-profiles" data-layer="profiles"
+  marker-end="url(#m-pr)"
+  points="1290,1000  1290,1092  2030,1092  2030,740"/>
+
+</g>
+
+<!-- ══════════════════════════════════════════════════════════
+     NODES  (rendered after edges so they sit on top)
+     ══════════════════════════════════════════════════════════ -->
+<g id="nodes">
+
+<!-- WAN -->
+<g class="node-group" transform="translate(1300,100)">
+  <rect class="node-rect" x="-100" y="-28" width="200" height="56" rx="8" fill="#9a6108" stroke="#f0a830" stroke-width="2"/>
+  <text class="node-label node-name" y="-9">WAN</text>
+  <text class="node-label node-sub"  y="9">10.0.17.0/24</text>
+</g>
+
+<!-- FW1 -->
+<g class="node-group" transform="translate(1300,260)">
+  <rect class="node-rect" x="-150" y="-40" width="300" height="80" rx="8" fill="#922b21" stroke="#c0392b" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">fw01-duck</text>
+  <text class="node-label node-sub"  y="-6">10.0.17.175 / 172.16.1.2</text>
+  <text class="node-label node-sub"  y="10">pfSense 2.7.2-RELEASE</text>
+  <text class="node-label node-sub"  y="26">Default Gateway &amp; NAT</text>
+</g>
+
+<!-- DC1 -->
+<g class="node-group" transform="translate(800,460)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#5b2c6f" stroke="#7d3c98" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">DC1-DUCK</text>
+  <text class="node-label node-sub"  y="-6">172.16.1.12</text>
+  <text class="node-label node-sub"  y="10">Windows Server 2022</text>
+  <text class="node-label node-sub"  y="26">ADDS + DNS Primary</text>
+</g>
+
+<!-- DC2 -->
+<g class="node-group" transform="translate(1800,460)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#5b2c6f" stroke="#7d3c98" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">DC2-DUCK</text>
+  <text class="node-label node-sub"  y="-6">172.16.1.13</text>
+  <text class="node-label node-sub"  y="10">Windows Server 2022</text>
+  <text class="node-label node-sub"  y="26">ADDS + DNS Replica</text>
+</g>
+
+<!-- MGMT01 -->
+<g class="node-group" transform="translate(200,700)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#1a5276" stroke="#2e86c1" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">MGMT01-DUCK</text>
+  <text class="node-label node-sub"  y="-6">172.16.1.14</text>
+  <text class="node-label node-sub"  y="10">Windows Server 2022</text>
+  <text class="node-label node-sub"  y="26">RSAT + GPO Mgmt</text>
+</g>
+
+<!-- DHCP01 -->
+<g class="node-group" transform="translate(570,700)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#0e6655" stroke="#148f77" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">DHCP01-duck</text>
+  <text class="node-label node-sub"  y="-6">172.16.1.10</text>
+  <text class="node-label node-sub"  y="10">Ubuntu 24.04.4 LTS</text>
+  <text class="node-label node-sub"  y="26">ISC DHCP Primary</text>
+</g>
+
+<!-- MGMT02 / Ansible -->
+<g class="node-group" transform="translate(940,700)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#b9770e" stroke="#e67e22" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">MGMT02-duck</text>
+  <text class="node-label node-sub"  y="-6">172.16.1.20</text>
+  <text class="node-label node-sub"  y="10">Ubuntu 24.04.4 LTS</text>
+  <text class="node-label node-sub"  y="26">Ansible Controller</text>
+</g>
+
+<!-- DOCKER -->
+<g class="node-group" transform="translate(1300,700)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#0e6655" stroke="#148f77" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">DOCKER01-duck</text>
+  <text class="node-label node-sub"  y="-6">172.16.1.5</text>
+  <text class="node-label node-sub"  y="10">Ubuntu 24.04.4 LTS</text>
+  <text class="node-label node-sub"  y="26">Docker — BookStack :6875</text>
+</g>
+
+<!-- UTIL -->
+<g class="node-group" transform="translate(1660,700)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#0e6655" stroke="#148f77" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">UTIL-duck</text>
+  <text class="node-label node-sub"  y="-6">172.16.1.15</text>
+  <text class="node-label node-sub"  y="10">Ubuntu 24.04.4 LTS</text>
+  <text class="node-label node-sub"  y="26">Netdata :19999</text>
+</g>
+
+<!-- DFS01 -->
+<g class="node-group" transform="translate(2020,700)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#1a5276" stroke="#2e86c1" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">DFS01-duck</text>
+  <text class="node-label node-sub"  y="-6">172.16.1.16</text>
+  <text class="node-label node-sub"  y="10">Windows Server 2022</text>
+  <text class="node-label node-sub"  y="26">DFS Namespace + Profiles</text>
+</g>
+
+<!-- DFS02 -->
+<g class="node-group" transform="translate(2400,700)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#1a5276" stroke="#2e86c1" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">DFS02-duck</text>
+  <text class="node-label node-sub"  y="-6">172.16.1.17</text>
+  <text class="node-label node-sub"  y="10">Windows Server 2022</text>
+  <text class="node-label node-sub"  y="26">DFS Replication Target</text>
+</g>
+
+<!-- W01 -->
+<g class="node-group" transform="translate(800,960)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#1e8449" stroke="#58d68d" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">W01-DUCK</text>
+  <text class="node-label node-sub"  y="-6">DHCP</text>
+  <text class="node-label node-sub"  y="10">Windows 11 Pro</text>
+  <text class="node-label node-sub"  y="26">RDP via GPO</text>
+</g>
+
+<!-- W02 -->
+<g class="node-group" transform="translate(1300,960)">
+  <rect class="node-rect" x="-130" y="-40" width="260" height="80" rx="8" fill="#1e8449" stroke="#58d68d" stroke-width="2"/>
+  <text class="node-label node-name" y="-22">W02-DUCK</text>
+  <text class="node-label node-sub"  y="-6">DHCP</text>
+  <text class="node-label node-sub"  y="10">Windows 11 Pro</text>
+  <text class="node-label node-sub"  y="26">RDP via GPO</text>
+</g>
+
+</g>
+</svg>
+</div>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" id="zoomIn">+</button>
+  <button class="zoom-btn" id="zoomOut">−</button>
+  <button class="zoom-btn" id="zoomReset" style="font-size:.68rem">⌂</button>
+</div>
+
+<div class="legend">
+  <div class="legend-title">Node Type</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#f0a830"></div>WAN</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#c0392b"></div>Firewall</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#7d3c98"></div>Domain Controller</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#2e86c1"></div>Windows Server</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#e67e22"></div>Ansible Controller</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#148f77"></div>Ubuntu Linux</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#58d68d"></div>Workstation</div>
+  <div class="legend-note">↔ bidirectional &nbsp; → one-way</div>
+</div>
+
+<script>
+const activeLayers = new Set(['network','ad','mgmt','ansible','dhcp','rdp','dfs','profiles']);
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const l = btn.dataset.layer;
+    if (activeLayers.has(l)) { activeLayers.delete(l); btn.classList.remove('active'); }
+    else                     { activeLayers.add(l);    btn.classList.add('active'); }
+    document.querySelectorAll('.edge,.elabel').forEach(el => {
+      if (el.dataset.layer) el.classList.toggle('hidden', !activeLayers.has(el.dataset.layer));
+    });
+  });
+});
+
+const svg = document.getElementById('svg');
+let vb=[0,0,2600,1200], drag=false, sx=0, sy=0;
+const setVB = () => svg.setAttribute('viewBox', vb.join(' '));
+
+svg.addEventListener('mousedown',  e => { drag=true; sx=e.clientX; sy=e.clientY; svg.classList.add('dragging'); });
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  vb[0]-=(e.clientX-sx)*vb[2]/svg.clientWidth;
+  vb[1]-=(e.clientY-sy)*vb[3]/svg.clientHeight;
+  sx=e.clientX; sy=e.clientY; setVB();
+});
+window.addEventListener('mouseup', () => { drag=false; svg.classList.remove('dragging'); });
+svg.addEventListener('wheel', e => {
+  e.preventDefault();
+  const f=e.deltaY>0?1.1:0.9;
+  vb[0]+=vb[2]*(e.offsetX/svg.clientWidth)*(1-f);
+  vb[1]+=vb[3]*(e.offsetY/svg.clientHeight)*(1-f);
+  vb[2]*=f; vb[3]*=f; setVB();
+},{passive:false});
+document.getElementById('zoomIn').onclick    = ()=>{ vb[0]+=vb[2]*.1;vb[1]+=vb[3]*.1;vb[2]*=.8;vb[3]*=.8;setVB(); };
+document.getElementById('zoomOut').onclick   = ()=>{ vb[0]-=vb[2]*.125;vb[1]-=vb[3]*.125;vb[2]*=1.25;vb[3]*=1.25;setVB(); };
+document.getElementById('zoomReset').onclick = ()=>{ vb=[0,0,2600,1200];setVB(); };
+</script>
+</body>
+</html>
